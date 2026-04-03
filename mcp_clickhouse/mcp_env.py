@@ -135,6 +135,16 @@ class ClickHouseConfig:
         return os.getenv("CLICKHOUSE_PROXY_PATH")
 
     @property
+    def cf_access_client_id(self) -> Optional[str]:
+        """Get the Cloudflare Access Service Token Client ID."""
+        return os.getenv("CF_ACCESS_CLIENT_ID")
+
+    @property
+    def cf_access_client_secret(self) -> Optional[str]:
+        """Get the Cloudflare Access Service Token Client Secret."""
+        return os.getenv("CF_ACCESS_CLIENT_SECRET")
+
+    @property
     def allow_write_access(self) -> bool:
         """Get whether write operations (DDL and DML) are allowed.
 
@@ -184,6 +194,15 @@ class ClickHouseConfig:
             config["proxy_path"] = self.proxy_path
 
         return config
+
+    def get_cf_access_headers(self) -> Optional[dict]:
+        """Get Cloudflare Access Service Token headers if configured."""
+        if self.cf_access_client_id and self.cf_access_client_secret:
+            return {
+                "CF-Access-Client-Id": self.cf_access_client_id,
+                "CF-Access-Client-Secret": self.cf_access_client_secret,
+            }
+        return None
 
     def _validate_required_vars(self) -> None:
         """Validate that all required environment variables are set.

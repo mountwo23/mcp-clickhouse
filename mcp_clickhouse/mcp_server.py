@@ -521,6 +521,27 @@ def create_clickhouse_client():
         f"send_receive_timeout={client_config['send_receive_timeout']}s)"
     )
 
+    # Inject Cloudflare Access headers before client creation
+    # clickhouse_connect makes a server query during __init__, so headers
+    # must be present from the start via a patched pool manager
+    cf_headers = get_config().get_cf_access_headers()
+    if cf_headers:
+        import urllib3
+        base_pool = clickhouse_connect.driver.httputil.default_pool_manager()
+
+        class CFAccessPoolManager:
+            """Wrapper that injects Cloudflare Access headers into every request."""
+            def __getattr__(self, name):
+                return getattr(base_pool, name)
+
+            def request(self, method, url, **kwargs):
+                headers = kwargs.get('headers', {}) or {}
+                headers.update(cf_headers)
+                kwargs['headers'] = headers
+                return base_pool.request(method, url, **kwargs)
+
+        client_config['pool_mgr'] = CFAccessPoolManager()
+
     try:
         client = clickhouse_connect.get_client(**client_config)
         # Test the connection
